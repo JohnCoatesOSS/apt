@@ -4,16 +4,26 @@
 PACKAGE = @PACKAGE@
 
 # C++ compiler options
+SIMULATOR_FLAGS_X86_64 = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk -arch x86_64 -mios-simulator-version-min=6.0
+SIMULATOR_FLAGS_i386 = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk -arch i386 -mios-simulator-version-min=6.0
+DEVICE_FLAGS_32BIT = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -arch armv7 -mios-version-min=6.0
+DEVICE_FLAGS_64BIT = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -arch arm64 -mios-version-min=6.0
+
 CC = @CC@
-CPPFLAGS+= @CPPFLAGS@ @DEFS@ -D_REENTRANT -Wall
+CPPFLAGS+= @CPPFLAGS@ @DEFS@ -D_REENTRANT -Wall -stdlib=libstdc++ -fmodules -fstrict-aliasing $(DEVICE_FLAGS_64BIT)
 CXX = @CXX@
 CXXFLAGS+= @CXXFLAGS@
 NUM_PROCS = @NUM_PROCS@
 
 # Linker stuff
+LINKER_SIMULATOR_FLAGS_X86_64 = -arch x86_64 -ios_simulator_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
+LINKER_SIMULATOR_FLAGS_i386 = -arch i386 -ios_simulator_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
+LINKER_DEVICE_FLAGS_32BIT = -arch armv7 -ios_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
+LINKER_DEVICE_FLAGS_64BIT = -arch arm64 -ios_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
 PICFLAGS+= -fPIC -DPIC
 LFLAGS+= @LDFLAGS@
-LEFLAGS+= 
+LEFLAGS+=
+LDFLAGS:=-dylib -single_module -ObjC -lc++ -lc++abi -lstdc++ -lSystem -liconv $(LINKER_DEVICE_FLAGS_64BIT)
 SOCKETLIBS:= @SOCKETLIBS@
 AR:=@AR@
 RANLIB:=@RANLIB@
@@ -66,4 +76,3 @@ else
    # Do not know how to create shared libraries here.
    ONLYSTATICLIBS = yes
 endif
-	

@@ -31,4 +31,5 @@ HEADERS = extracttar.h arfile.h filelist.h database.h extract.h \
           dpkgdb.h dirstream.h debfile.h
 
 HEADERS := $(addprefix apt-pkg/,$(HEADERS))
+LDFLAGS+= -lapt-pkg
 include $(LIBRARY_H)

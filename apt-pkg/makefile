@@ -22,7 +22,7 @@ SOURCE = contrib/mmap.cc contrib/error.cc contrib/strutl.cc \
          contrib/configuration.cc contrib/progress.cc contrib/cmndline.cc \
 	 contrib/md5.cc contrib/sha1.cc contrib/sha256.cc contrib/hashes.cc \
 	 contrib/cdromutl.cc contrib/crc-16.cc contrib/netrc.cc \
-	 contrib/fileutl.cc 
+	 contrib/fileutl.cc
 HEADERS = mmap.h error.h configuration.h fileutl.h  cmndline.h netrc.h\
 	  md5.h crc-16.h cdromutl.h strutl.h sptr.h sha1.h sha256.h hashes.h \
 	  macros.h
@@ -53,5 +53,5 @@ HEADERS+= debversion.h debsrcrecords.h dpkgpm.h debrecords.h \
 	  deblistparser.h debsystem.h debindexfile.h debmetaindex.h
 
 HEADERS := $(addprefix apt-pkg/,$(HEADERS))
-
+LDFLAGS+= -install_name @rpath/libapt-pkg.dylib
 include $(LIBRARY_H)

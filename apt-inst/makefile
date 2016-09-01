@@ -31,5 +31,5 @@ HEADERS = extracttar.h arfile.h filelist.h database.h extract.h \
           dpkgdb.h dirstream.h debfile.h
 
 HEADERS := $(addprefix apt-pkg/,$(HEADERS))
-LDFLAGS+= -lapt-pkg
+LDFLAGS+= -lapt-pkg -install_name @rpath/libapt-inst.dylib
 include $(LIBRARY_H)

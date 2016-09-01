@@ -21,6 +21,7 @@
 #define PKGLIB_TAGFILE_H
 
 
+#include <apt-pkg/mmap.h>
 #include <apt-pkg/fileutl.h>
 #include <stdio.h>
     
@@ -28,15 +29,16 @@ class pkgTagSection
 {
    const char *Section;
    
+   protected:
+   const char *Stop;
+   
+   private:
    // We have a limit of 256 tags per section.
    unsigned int Indexes[256];
    unsigned int AlphaIndexes[0x100];
    
    unsigned int TagCount;
      
-   protected:
-   const char *Stop;
-
    public:
    
    inline bool operator ==(const pkgTagSection &rhs) {return Section == rhs.Section;};
@@ -51,7 +53,7 @@ class pkgTagSection
    bool Scan(const char *Start,unsigned long MaxLength);
    inline unsigned long size() const {return Stop - Section;};
    void Trim();
-   virtual void TrimRecord(bool BeforeRecord, const char* &End);
+   void TrimRecord(bool BeforeRecord, const char* &End);
    
    inline unsigned int Count() const {return TagCount;};
    inline void Get(const char *&Start,const char *&Stop,unsigned int I) const
@@ -74,10 +76,9 @@ class pkgTagFile
    char *End;
    bool Done;
    unsigned long iOffset;
-   unsigned long Size;
+   MMap *Map;
 
    bool Fill();
-   bool Resize();
 
    public:
 

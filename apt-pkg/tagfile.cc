@@ -28,11 +28,12 @@ using std::string;
 // ---------------------------------------------------------------------
 /* */
 pkgTagFile::pkgTagFile(FileFd *pFd,unsigned long Size) :
-     Fd(*pFd),
-     Size(Size)
+     Fd(*pFd)
 {
-   if (Fd.IsOpen() == false)
+   if (Fd.IsOpen() == false || Fd.Size() == 0)
    {
+      _error->Discard();
+      Map = NULL;
       Buffer = 0;
       Start = End = Buffer = 0;
       Done = true;
@@ -40,7 +41,8 @@ pkgTagFile::pkgTagFile(FileFd *pFd,unsigned long Size) :
       return;
    }
    
-   Buffer = new char[Size];
+   Map = new MMap(*pFd, MMap::ReadOnly);
+   Buffer = reinterpret_cast<char *>(Map->Data());
    Start = End = Buffer;
    Done = false;
    iOffset = 0;
@@ -52,34 +54,7 @@ pkgTagFile::pkgTagFile(FileFd *pFd,unsigned long Size) :
 /* */
 pkgTagFile::~pkgTagFile()
 {
-   delete [] Buffer;
-}
-									/*}}}*/
-// TagFile::Resize - Resize the internal buffer				/*{{{*/
-// ---------------------------------------------------------------------
-/* Resize the internal buffer (double it in size). Fail if a maximum size
- * size is reached.
- */
-bool pkgTagFile::Resize()
-{
-   char *tmp;
-   unsigned long EndSize = End - Start;
-
-   // fail is the buffer grows too big
-   if(Size > 1024*1024+1)
-      return false;
-
-   // get new buffer and use it
-   tmp = new char[2*Size];
-   memcpy(tmp, Buffer, Size);
-   Size = Size*2;
-   delete [] Buffer;
-   Buffer = tmp;
-
-   // update the start/end pointers to the new buffer
-   Start = Buffer;
-   End = Start + EndSize;
-   return true;
+   delete Map;
 }
 									/*}}}*/
 // TagFile::Step - Advance to the next section				/*{{{*/
@@ -90,15 +65,11 @@ bool pkgTagFile::Resize()
  */
 bool pkgTagFile::Step(pkgTagSection &Tag)
 {
-   while (Tag.Scan(Start,End - Start) == false)
+   if (Tag.Scan(Start,End - Start) == false)
    {
-      if (Fill() == false)
-	 return false;
-      
-      if(Tag.Scan(Start,End - Start))
-	 break;
-
-      if (Resize() == false)
+      if (Start == End)
+         return false;
+      else
 	 return _error->Error(_("Unable to parse package file %s (1)"),
 				 Fd.Name().c_str());
    }
@@ -115,41 +86,11 @@ bool pkgTagFile::Step(pkgTagSection &Tag)
    then fills the rest from the file */
 bool pkgTagFile::Fill()
 {
-   unsigned long EndSize = End - Start;
-   unsigned long Actual = 0;
-   
-   memmove(Buffer,Start,EndSize);
-   Start = Buffer;
-   End = Buffer + EndSize;
-   
-   if (Done == false)
-   {
-      // See if only a bit of the file is left
-      if (Fd.Read(End,Size - (End - Buffer),&Actual) == false)
-	 return false;
-      if (Actual != Size - (End - Buffer))
-	 Done = true;
-      End += Actual;
-   }
-   
-   if (Done == true)
-   {
-      if (EndSize <= 3 && Actual == 0)
-	 return false;
-      if (Size - (End - Buffer) < 4)
-	 return true;
-      
-      // Append a double new line if one does not exist
-      unsigned int LineCount = 0;
-      for (const char *E = End - 1; E - End < 6 && (*E == '\n' || *E == '\r'); E--)
-	 if (*E == '\n')
-	    LineCount++;
-      for (; LineCount < 2; LineCount++)
-	 *End++ = '\n';
-      
-      return true;
-   }
-   
+   unsigned int Size(Map->Size());
+   End = Buffer + Size;
+   if (iOffset >= Size)
+      return false;
+   Start = Buffer + iOffset;
    return true;
 }
 									/*}}}*/
@@ -171,20 +112,11 @@ bool pkgTagFile::Jump(pkgTagSection &Tag,unsigned long Offset)
    // Reposition and reload..
    iOffset = Offset;
    Done = false;
-   if (Fd.Seek(Offset) == false)
-      return false;
    End = Start = Buffer;
    
    if (Fill() == false)
       return false;
 
-   if (Tag.Scan(Start,End - Start) == true)
-      return true;
-   
-   // This appends a double new line (for the real eof handling)
-   if (Fill() == false)
-      return false;
-   
    if (Tag.Scan(Start,End - Start) == false)
       return _error->Error(_("Unable to parse package file %s (2)"),Fd.Name().c_str());
    
@@ -222,19 +154,24 @@ bool pkgTagSection::Scan(const char *Start,unsigned long MaxLength)
       if (isspace(Stop[0]) == 0)
       {
 	 Indexes[TagCount++] = Stop - Section;
-	 AlphaIndexes[AlphaHash(Stop,End)] = TagCount;
+         unsigned long hash(AlphaHash(Stop, End));
+         while (AlphaIndexes[hash] != 0)
+            hash = (hash + 1) % (sizeof(AlphaIndexes) / sizeof(AlphaIndexes[0]));
+	 AlphaIndexes[hash] = TagCount;
       }
 
       Stop = (const char *)memchr(Stop,'\n',End - Stop);
       
-      if (Stop == 0)
-	 return false;
+      if (Stop == 0) {
+         Stop = End;
+         goto end;
+      }
 
       for (; Stop+1 < End && Stop[1] == '\r'; Stop++);
 
       // Double newline marks the end of the record
-      if (Stop+1 < End && Stop[1] == '\n')
-      {
+      if (Stop+1 == End || Stop[1] == '\n')
+      end: {
 	 Indexes[TagCount] = Stop - Section;
 	 TrimRecord(false,End);
 	 return true;
@@ -270,14 +207,16 @@ void pkgTagSection::Trim()
 bool pkgTagSection::Find(const char *Tag,unsigned &Pos) const
 {
    unsigned int Length = strlen(Tag);
-   unsigned int I = AlphaIndexes[AlphaHash(Tag)];
-   if (I == 0)
-      return false;
-   I--;
+   unsigned int J = AlphaHash(Tag);
    
-   for (unsigned int Counter = 0; Counter != TagCount; Counter++, 
-	I = (I+1)%TagCount)
+   for (unsigned int Counter = 0; Counter != TagCount; Counter++,
+	J = (J+1)%(sizeof(AlphaIndexes)/sizeof(AlphaIndexes[0])))
    {
+      unsigned int I = AlphaIndexes[J];
+      if (I == 0)
+         return false;
+      I--;
+
       const char *St;
       St = Section + Indexes[I];
       if (strncasecmp(Tag,St,Length) != 0)
@@ -303,14 +242,16 @@ bool pkgTagSection::Find(const char *Tag,const char *&Start,
 		         const char *&End) const
 {
    unsigned int Length = strlen(Tag);
-   unsigned int I = AlphaIndexes[AlphaHash(Tag)];
-   if (I == 0)
-      return false;
-   I--;
+   unsigned int J = AlphaHash(Tag);
    
-   for (unsigned int Counter = 0; Counter != TagCount; Counter++, 
-	I = (I+1)%TagCount)
+   for (unsigned int Counter = 0; Counter != TagCount; Counter++,
+	J = (J+1)%(sizeof(AlphaIndexes)/sizeof(AlphaIndexes[0])))
    {
+      unsigned int I = AlphaIndexes[J];
+      if (I == 0)
+         return false;
+      I--;
+
       const char *St;
       St = Section + Indexes[I];
       if (strncasecmp(Tag,St,Length) != 0)

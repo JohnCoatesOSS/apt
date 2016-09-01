@@ -23,7 +23,7 @@
 // If login[0] = 0, search for login and password within a machine section
 // in the netrc.
 // If login[0] != 0, search for password within machine and login.
-int parsenetrc (char *host, char *login, char *password, char *filename);
+int parsenetrc (const char *host, char *login, char *password, const char *filename);
 
 void maybe_add_auth (URI &Uri, string NetRCFile);
 #endif

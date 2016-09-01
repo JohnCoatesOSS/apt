@@ -39,11 +39,15 @@ class debRecordParser : public pkgRecords::Parser
    virtual string SourcePkg();
    virtual string SourceVer();
    
+   virtual bool ShortDesc(const char *&Start,const char *&End);
+   virtual bool LongDesc(const char *&Start,const char *&End);
+
    // These are some general stats about the package
    virtual string Maintainer();
    virtual string ShortDesc();
    virtual string LongDesc();
    virtual string Name();
+   virtual string Display();
    virtual string Homepage();
 
    virtual void GetRec(const char *&Start,const char *&Stop);

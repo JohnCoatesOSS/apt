@@ -236,9 +236,27 @@ string pkgAcquire::QueueName(string Uri,MethodConfig const *&Config)
    /* Single-Instance methods get exactly one queue per URI. This is
       also used for the Access queue method  */
    if (Config->SingleInstance == true || QueueMode == QueueAccess)
-       return U.Access;
+      return U.Access;
+   string name(U.Access + ':' + U.Host);
 
-   return U.Access + ':' + U.Host;
+   int parallel(_config->FindI("Acquire::"+U.Access+"::MaxParallel",8));
+   if (parallel <= 0)
+      return name;
+
+   typedef map<string, int> indexmap;
+   static indexmap indices;
+
+   pair<indexmap::iterator, bool> cache(indices.insert(indexmap::value_type(name, -1)));
+   if (cache.second || cache.first->second == -1) {
+      int &index(indices[U.Access]);
+      if (index >= parallel)
+         index = 0;
+      cache.first->second = index++;
+   }
+
+   ostringstream value;
+   value << U.Access << "::" << cache.first->second;
+   return value.str();
 }
 									/*}}}*/
 // Acquire::GetConfig - Fetch the configuration information		/*{{{*/

@@ -25,6 +25,8 @@
 #include <iostream>
 #include <time.h>
 
+#include <apt-pkg/srkstring.h>
+
 using std::string;
 using std::vector;
 using std::ostream;
@@ -57,6 +59,7 @@ int StringToBool(const string &Text,int Default = -1);
 bool ReadMessages(int Fd, vector<string> &List);
 bool StrToNum(const char *Str,unsigned long &Res,unsigned Len,unsigned Base = 0);
 bool Hex2Num(const string &Str,unsigned char *Num,unsigned int Length);
+bool Hex2Num(const srkString &Str,unsigned char *Num,unsigned int Length);
 bool TokSplitString(char Tok,char *Input,char **List,
 		    unsigned long ListMax);
 void ioprintf(ostream &out,const char *format,...) APT_FORMAT2;
@@ -66,6 +69,7 @@ bool CheckDomainList(const string &Host, const string &List);
 int tolower_ascii(int c);
 
 #define APT_MKSTRCMP(name,func) \
+inline int name(const srkString &A,const char *B) {return func(A.Start,A.Start+A.Size,B,B+strlen(B));}; \
 inline int name(const char *A,const char *B) {return func(A,A+strlen(A),B,B+strlen(B));}; \
 inline int name(const char *A,const char *AEnd,const char *B) {return func(A,AEnd,B,B+strlen(B));}; \
 inline int name(const string& A,const char *B) {return func(A.c_str(),A.c_str()+A.length(),B,B+strlen(B));}; \
@@ -73,6 +77,7 @@ inline int name(const string& A,const string& B) {return func(A.c_str(),A.c_str(
 inline int name(const string& A,const char *B,const char *BEnd) {return func(A.c_str(),A.c_str()+A.length(),B,BEnd);};
 
 #define APT_MKSTRCMP2(name,func) \
+inline int name(const srkString &A,const char *B) {return func(A.Start,A.Start+A.Size,B,B+strlen(B));}; \
 inline int name(const char *A,const char *AEnd,const char *B) {return func(A,AEnd,B,B+strlen(B));}; \
 inline int name(const string& A,const char *B) {return func(A.begin(),A.end(),B,B+strlen(B));}; \
 inline int name(const string& A,const string& B) {return func(A.begin(),A.end(),B.begin(),B.end());}; \

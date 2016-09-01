@@ -23,9 +23,10 @@
 #include <string>
 #include <time.h>
 #include <apt-pkg/mmap.h>
+#include <apt-pkg/srkstring.h>
 
 using std::string;
-    
+
 class pkgVersioningSystem;
 class pkgCache								/*{{{*/
 {
@@ -41,6 +42,7 @@ class pkgCache								/*{{{*/
    struct StringItem;
    struct VerFile;
    struct DescFile;
+   struct Tag;
    
    // Iterators
    class PkgIterator;
@@ -51,6 +53,7 @@ class pkgCache								/*{{{*/
    class PkgFileIterator;
    class VerFileIterator;
    class DescFileIterator;
+   class TagIterator;
    friend class PkgIterator;
    friend class VerIterator;
    friend class DescInterator;
@@ -59,6 +62,7 @@ class pkgCache								/*{{{*/
    friend class PkgFileIterator;
    friend class VerFileIterator;
    friend class DescFileIterator;
+   friend class TagIterator;
    
    class Namespace;
    
@@ -99,6 +103,7 @@ class pkgCache								/*{{{*/
 
    unsigned long sHash(const string &S) const;
    unsigned long sHash(const char *S) const;
+   unsigned long sHash(const srkString &S) const;
    
    public:
    
@@ -109,6 +114,7 @@ class pkgCache								/*{{{*/
    DescFile *DescFileP;
    PackageFile *PkgFileP;
    Version *VerP;
+   Tag *TagP;
    Description *DescP;
    Provides *ProvideP;
    Dependency *DepP;
@@ -123,12 +129,14 @@ class pkgCache								/*{{{*/
    // String hashing function (512 range)
    inline unsigned long Hash(const string &S) const {return sHash(S);};
    inline unsigned long Hash(const char *S) const {return sHash(S);};
+   inline unsigned long Hash(const srkString &S) const {return sHash(S);};
 
    // Usefull transformation things
    const char *Priority(unsigned char Priority);
    
    // Accessors
    PkgIterator FindPkg(const string &Name);
+   PkgIterator FindPkg(const srkString &Name);
    Header &Head() {return *HeaderP;};
    inline PkgIterator PkgBegin();
    inline PkgIterator PkgEnd();
@@ -161,6 +169,7 @@ struct pkgCache::Header
    unsigned short PackageSz;
    unsigned short PackageFileSz;
    unsigned short VersionSz;
+   unsigned short TagSz;
    unsigned short DescriptionSz;
    unsigned short DependencySz;
    unsigned short ProvidesSz;
@@ -170,6 +179,7 @@ struct pkgCache::Header
    // Structure counts
    unsigned long PackageCount;
    unsigned long VersionCount;
+   unsigned long TagCount;
    unsigned long DescriptionCount;
    unsigned long DependsCount;
    unsigned long PackageFileCount;
@@ -200,6 +210,7 @@ struct pkgCache::Package						/*{{{*/
 {
    // Pointers
    map_ptrloc Name;              // Stringtable
+   map_ptrloc Display;           // Stringtable
    map_ptrloc VersionList;       // Version
    map_ptrloc CurrentVer;        // Version
    map_ptrloc Section;           // StringTable (StringItem)
@@ -208,6 +219,7 @@ struct pkgCache::Package						/*{{{*/
    map_ptrloc NextPackage;       // Package
    map_ptrloc RevDepends;        // Dependency
    map_ptrloc ProvidesList;      // Provides
+   map_ptrloc TagList;           // Tag
 
    // Install/Remove/Purge etc
    unsigned char SelectedState;     // What
@@ -217,13 +229,12 @@ struct pkgCache::Package						/*{{{*/
    unsigned int ID;
    unsigned long Flags;
 };
-									/*}}}*/
-struct pkgCache::PackageFile						/*{{{*/
+
+struct pkgCache::PackageFile
 {
    // Names
    map_ptrloc FileName;        // Stringtable
    map_ptrloc Archive;         // Stringtable
-   map_ptrloc Codename;        // Stringtable
    map_ptrloc Component;       // Stringtable
    map_ptrloc Version;         // Stringtable
    map_ptrloc Origin;          // Stringtable
@@ -248,6 +259,12 @@ struct pkgCache::VerFile						/*{{{*/
    unsigned short Size;
 };
 									/*}}}*/
+struct pkgCache::Tag						/*{{{*/
+{
+   map_ptrloc Name;           // Stringtable
+   map_ptrloc NextTag;        // Tag
+};
+									/*}}}*/
 struct pkgCache::DescFile						/*{{{*/
 {
    map_ptrloc File;           // PackageFile
@@ -259,6 +276,7 @@ struct pkgCache::DescFile						/*{{{*/
 struct pkgCache::Version						/*{{{*/
 {
    map_ptrloc VerStr;            // Stringtable
+   map_ptrloc Display;           // Stringtable
    map_ptrloc Section;           // StringTable (StringItem)
    map_ptrloc Arch;              // StringTable
       
@@ -273,8 +291,9 @@ struct pkgCache::Version						/*{{{*/
    map_ptrloc Size;              // These are the .deb size
    map_ptrloc InstalledSize;
    unsigned short Hash;
-   unsigned int ID;
+   unsigned short ID1;
    unsigned char Priority;
+   unsigned short ID2;
 };
 									/*}}}*/
 struct pkgCache::Description						/*{{{*/
@@ -340,6 +359,7 @@ class pkgCache::Namespace						/*{{{*/
 
    typedef pkgCache::PkgIterator PkgIterator;
    typedef pkgCache::VerIterator VerIterator;
+   typedef pkgCache::TagIterator TagIterator;
    typedef pkgCache::DescIterator DescIterator;
    typedef pkgCache::DepIterator DepIterator;
    typedef pkgCache::PrvIterator PrvIterator;

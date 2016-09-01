@@ -51,6 +51,17 @@ string debRecordParser::Name()
    return Section.FindS("Package");
 }
 									/*}}}*/
+// RecordParser::Display - Return the package display name			/*{{{*/
+// ---------------------------------------------------------------------
+/* */
+string debRecordParser::Display()
+{
+   string display(Section.FindS("Name"));
+   if (display.empty())
+      display = Section.FindS("Maemo-Display-Name");
+   return display;
+}
+									/*}}}*/
 // RecordParser::Homepage - Return the package homepage		       	/*{{{*/
 // ---------------------------------------------------------------------
 /* */
@@ -111,10 +122,9 @@ string debRecordParser::LongDesc()
   string orig, dest;
   char *codeset = nl_langinfo(CODESET);
 
-  if (!Section.FindS("Description").empty())
-     orig = Section.FindS("Description").c_str();
-  else 
-     orig = Section.FindS(("Description-" + pkgIndexFile::LanguageCode()).c_str()).c_str();
+  orig = Section.FindS("Description");
+  if (orig.empty())
+     orig = Section.FindS(("Description-" + pkgIndexFile::LanguageCode()).c_str());
 
   if (strcmp(codeset,"UTF-8") != 0) {
      UTF8ToCodeset(codeset, orig, &dest);
@@ -122,6 +132,29 @@ string debRecordParser::LongDesc()
    }    
   
    return orig;
+}
+									/*}}}*/
+// RecordParser::ShortDesc - Return a 1 line description		/*{{{*/
+// ---------------------------------------------------------------------
+/* */
+bool debRecordParser::ShortDesc(const char *&Start,const char *&End)
+{
+   if (!LongDesc(Start,End))
+      return false;
+   const char *Line = (const char *) memchr(Start, '\n', End - Start);
+   if (Line != NULL)
+      End = Line;
+   return true;
+}
+									/*}}}*/
+// RecordParser::LongDesc - Return a longer description			/*{{{*/
+// ---------------------------------------------------------------------
+/* */
+bool debRecordParser::LongDesc(const char *&Start,const char *&End)
+{
+  if (!Section.Find("Description",Start,End))
+     return Section.Find(("Description-" + pkgIndexFile::LanguageCode()).c_str(),Start,End);
+  return true;
 }
 									/*}}}*/
 

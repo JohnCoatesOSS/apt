@@ -50,8 +50,6 @@ class pkgVersionMatch
    string RelVerStr;
    bool RelVerPrefixMatch;
    string RelOrigin;
-   string RelRelease;
-   string RelCodename;
    string RelArchive;
    string RelLabel;
    string RelComponent;

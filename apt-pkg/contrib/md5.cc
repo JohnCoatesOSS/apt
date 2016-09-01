@@ -173,6 +173,12 @@ MD5SumValue::MD5SumValue(string Str)
    memset(Sum,0,sizeof(Sum));
    Set(Str);
 }
+
+MD5SumValue::MD5SumValue(const srkString &Str)
+{
+   memset(Sum, 0, sizeof(Sum));
+   Set(Str);
+}
 									/*}}}*/
 // MD5SumValue::MD5SumValue - Default constructor			/*{{{*/
 // ---------------------------------------------------------------------
@@ -186,6 +192,11 @@ MD5SumValue::MD5SumValue()
 // ---------------------------------------------------------------------
 /* Converts the hex string into a set of chars */
 bool MD5SumValue::Set(string Str)
+{
+   return Hex2Num(Str,Sum,sizeof(Sum));
+}
+
+bool MD5SumValue::Set(const srkString &Str)
 {
    return Hex2Num(Str,Sum,sizeof(Sum));
 }

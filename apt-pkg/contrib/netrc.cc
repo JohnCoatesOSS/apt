@@ -40,13 +40,13 @@ enum {
 #define NETRC DOT_CHAR "netrc"
 
 /* returns -1 on failure, 0 if the host is found, 1 is the host isn't found */
-int parsenetrc (char *host, char *login, char *password, char *netrcfile = NULL)
+int parsenetrc (const char *host, char *login, char *password, const char *netrcfile = NULL)
 {
   FILE *file;
   int retcode = 1;
   int specific_login = (login[0] != 0);
   char *home = NULL;
-  bool netrc_alloc = false;
+  char *netrc_alloc = NULL;
   int state = NOTHING;
 
   char state_login = 0;        /* Found a login keyword */
@@ -67,11 +67,11 @@ int parsenetrc (char *host, char *login, char *password, char *netrcfile = NULL)
     if (!home)
       return -1;
 
-    asprintf (&netrcfile, "%s%s%s", home, DIR_CHAR, NETRC);
-    if(!netrcfile)
+    asprintf (&netrc_alloc, "%s%s%s", home, DIR_CHAR, NETRC);
+    if(!netrc_alloc)
       return -1;
     else
-      netrc_alloc = true;
+      netrcfile = netrc_alloc;
   }
 
   file = fopen (netrcfile, "r");
@@ -144,7 +144,7 @@ int parsenetrc (char *host, char *login, char *password, char *netrcfile = NULL)
   }
 
   if (netrc_alloc)
-    free(netrcfile);
+    free(netrc_alloc);
 
   return retcode;
 }
@@ -160,11 +160,11 @@ void maybe_add_auth (URI &Uri, string NetRCFile)
     {
       char login[64] = "";
       char password[64] = "";
-      char *netrcfile = strdupa (NetRCFile.c_str ());
+      const char *netrcfile = NetRCFile.c_str ();
 
       // first check for a generic host based netrc entry
-      char *host = strdupa (Uri.Host.c_str ());
-      if (host && parsenetrc (host, login, password, netrcfile) == 0)
+      const char *host = Uri.Host.c_str ();
+      if (parsenetrc (host, login, password, netrcfile) == 0)
       {
 	 if (_config->FindB("Debug::Acquire::netrc", false) == true)
 	    std::clog << "host: " << host 
@@ -179,7 +179,8 @@ void maybe_add_auth (URI &Uri, string NetRCFile)
       // if host did not work, try Host+Path next, this will trigger
       // a lookup uri.startswith(host) in the netrc file parser (because
       // of the "/"
-      char *hostpath = strdupa (string(Uri.Host+Uri.Path).c_str ());
+      std::string temp(Uri.Host+Uri.Path);
+      const char *hostpath = temp.c_str ();
       if (hostpath && parsenetrc (hostpath, login, password, netrcfile) == 0)
       {
 	 if (_config->FindB("Debug::Acquire::netrc", false) == true)

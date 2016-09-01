@@ -49,9 +49,10 @@ class debPackagesIndex : public pkgIndexFile
 
    string Info(const char *Type) const;
    string IndexFile(const char *Type) const;
-   string IndexURI(const char *Type) const;
    
    public:
+
+   string IndexURI(const char *Type) const;
    
    virtual const Type *GetType() const;
 

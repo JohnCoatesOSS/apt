@@ -52,9 +52,11 @@ class pkgCacheGenerator							/*{{{*/
    bool FoundFileDeps;
    
    bool NewPackage(pkgCache::PkgIterator &Pkg,const string &PkgName);
+   bool NewPackage(pkgCache::PkgIterator &Pkg,const srkString &PkgName);
    bool NewFileVer(pkgCache::VerIterator &Ver,ListParser &List);
    bool NewFileDesc(pkgCache::DescIterator &Desc,ListParser &List);
    unsigned long NewVersion(pkgCache::VerIterator &Ver,const string &VerStr,unsigned long Next);
+   unsigned long NewVersion(pkgCache::VerIterator &Ver,const srkString &VerStr,unsigned long Next);
    map_ptrloc NewDescription(pkgCache::DescIterator &Desc,const string &Lang,const MD5SumValue &md5sum,map_ptrloc Next);
 
    public:
@@ -96,11 +98,18 @@ class pkgCacheGenerator::ListParser
    inline unsigned long WriteUniqString(const char *S,unsigned int Size) {return Owner->WriteUniqString(S,Size);};
    inline unsigned long WriteString(const string &S) {return Owner->Map.WriteString(S);};
    inline unsigned long WriteString(const char *S,unsigned int Size) {return Owner->Map.WriteString(S,Size);};
+   inline unsigned long WriteString(const srkString &S) {return Owner->Map.WriteString(S.Start,S.Size);};
    bool NewDepends(pkgCache::VerIterator Ver,const string &Package,
 		   const string &Version,unsigned int Op,
 		   unsigned int Type);
+   bool NewDepends(pkgCache::VerIterator Ver,const srkString &Package,
+		   const srkString &Version,unsigned int Op,
+		   unsigned int Type);
    bool NewProvides(pkgCache::VerIterator Ver,const string &Package,
 		    const string &Version);
+   bool NewProvides(pkgCache::VerIterator Ver,const srkString &Package,
+		    const srkString &Version);
+   bool NewTag(pkgCache::PkgIterator Pkg,const char *NameStart,unsigned int NameSize);
    
    public:
    

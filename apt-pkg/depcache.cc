@@ -80,6 +80,9 @@ pkgDepCache::ActionGroup::~ActionGroup()
 // DepCache::pkgDepCache - Constructors					/*{{{*/
 // ---------------------------------------------------------------------
 /* */
+static bool DebugMarker;
+static bool DebugAutoInstall;
+
 pkgDepCache::pkgDepCache(pkgCache *pCache,Policy *Plcy) :
   group_level(0), Cache(pCache), PkgState(0), DepState(0)
 {
@@ -707,6 +710,10 @@ void pkgDepCache::Update(PkgIterator const &Pkg)
 // DepCache::MarkKeep - Put the package in the keep state		/*{{{*/
 // ---------------------------------------------------------------------
 /* */
+void pkgDepCache::MarkKeep(PkgIterator const &Pkg, bool Soft, bool FromUser) {
+   MarkKeep(Pkg, Soft, FromUser, 0);
+}
+
 void pkgDepCache::MarkKeep(PkgIterator const &Pkg, bool Soft, bool FromUser,
                            unsigned long Depth)
 {
@@ -771,6 +778,10 @@ void pkgDepCache::MarkKeep(PkgIterator const &Pkg, bool Soft, bool FromUser,
 // DepCache::MarkDelete - Put the package in the delete state		/*{{{*/
 // ---------------------------------------------------------------------
 /* */
+void pkgDepCache::MarkDelete(PkgIterator const &Pkg, bool Purge) {
+   MarkDelete(Pkg, Purge, 0);
+}
+
 void pkgDepCache::MarkDelete(PkgIterator const &Pkg, bool rPurge,
                              unsigned long Depth, bool FromUser)
 {

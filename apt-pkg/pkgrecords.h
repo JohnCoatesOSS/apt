@@ -61,6 +61,9 @@ class pkgRecords::Parser						/*{{{*/
    virtual string SourcePkg() {return string();};
    virtual string SourceVer() {return string();};
 
+   virtual bool ShortDesc(const char *&Start,const char *&End) {return false;}
+   virtual bool LongDesc(const char *&Start,const char *&End) {return false;}
+
    // These are some general stats about the package
    virtual string Maintainer() {return string();};
    virtual string ShortDesc() {return string();};

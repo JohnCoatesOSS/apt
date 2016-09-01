@@ -22,7 +22,7 @@
 // SrcRecords::pkgSrcRecords - Constructor				/*{{{*/
 // ---------------------------------------------------------------------
 /* Open all the source index files */
-pkgSrcRecords::pkgSrcRecords(pkgSourceList &List) : Files(0), Current(0)
+pkgSrcRecords::pkgSrcRecords(pkgSourceList &List) : Files(0)
 {
    for (pkgSourceList::const_iterator I = List.begin(); I != List.end(); I++)
    {

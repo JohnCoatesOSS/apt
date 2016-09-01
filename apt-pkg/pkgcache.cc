@@ -49,7 +49,7 @@ pkgCache::Header::Header()
    
    /* Whenever the structures change the major version should be bumped,
       whenever the generator changes the minor version should be bumped. */
-   MajorVersion = 8;
+   MajorVersion = 7;
    MinorVersion = 0;
    Dirty = false;
    
@@ -124,6 +124,7 @@ bool pkgCache::ReMap()
    VerP = (Version *)Map.Data();
    DescP = (Description *)Map.Data();
    ProvideP = (Provides *)Map.Data();
+   TagP = (Tag *)Map.Data();
    DepP = (Dependency *)Map.Data();
    StringItemP = (StringItem *)Map.Data();
    StrP = (char *)Map.Data();
@@ -175,17 +176,30 @@ unsigned long pkgCache::sHash(const char *Str) const
    return Hash % _count(HeaderP->HashTable);
 }
 
+unsigned long pkgCache::sHash(const srkString &Str) const
+{
+   unsigned long Hash = 0;
+   for (const char *I = Str.Start, *E = I + Str.Size; I != E; I++)
+      Hash = 5*Hash + tolower_ascii(*I);
+   return Hash % _count(HeaderP->HashTable);
+}
+
 									/*}}}*/
 // Cache::FindPkg - Locate a package by name				/*{{{*/
 // ---------------------------------------------------------------------
 /* Returns 0 on error, pointer to the package otherwise */
 pkgCache::PkgIterator pkgCache::FindPkg(const string &Name)
 {
+   return FindPkg(srkString(Name));
+}
+
+pkgCache::PkgIterator pkgCache::FindPkg(const srkString &Name)
+{
    // Look at the hash bucket
    Package *Pkg = PkgP + HeaderP->HashTable[Hash(Name)];
    for (; Pkg != PkgP; Pkg = PkgP + Pkg->NextPackage)
    {
-      if (Pkg->Name != 0 && StrP[Pkg->Name] == Name[0] &&
+      if (Pkg->Name != 0 &&
 	  stringcasecmp(Name,StrP + Pkg->Name) == 0)
 	 return PkgIterator(*this,Pkg);
    }
@@ -657,8 +671,6 @@ string pkgCache::PkgFileIterator::RelStr()
       Res = Res + (Res.empty() == true?"o=":",o=")  + Origin();
    if (Archive() != 0)
       Res = Res + (Res.empty() == true?"a=":",a=")  + Archive();
-   if (Codename() != 0)
-      Res = Res + (Res.empty() == true?"n=":",n=")  + Codename();
    if (Label() != 0)
       Res = Res + (Res.empty() == true?"l=":",l=")  + Label();
    if (Component() != 0)

@@ -14,7 +14,7 @@ include ../buildlib/libversion.mak
 LIBRARY=apt-pkg
 MAJOR=$(LIBAPTPKG_MAJOR)
 MINOR=$(LIBAPTPKG_RELEASE)
-SLIBS=$(PTHREADLIB) $(INTLLIBS) -lutil -ldl
+SLIBS=$(PTHREADLIB) $(INTLLIBS) -lutil -ldl $(LIBICONV)
 APT_DOMAIN:=libapt-pkg$(LIBAPTPKG_MAJOR)
 
 # Source code for the contributed non-core things
@@ -42,7 +42,7 @@ HEADERS+= algorithms.h depcache.h pkgcachegen.h cacheiterators.h \
 	  acquire.h acquire-worker.h acquire-item.h acquire-method.h \
 	  clean.h srcrecords.h cachefile.h versionmatch.h policy.h \
 	  pkgsystem.h indexfile.h metaindex.h indexrecords.h vendor.h \
-          vendorlist.h cdrom.h indexcopy.h aptconfiguration.h
+          vendorlist.h cdrom.h indexcopy.h aptconfiguration.h srkstring.h
 
 # Source code for the debian specific components
 # In theory the deb headers do not need to be exported..

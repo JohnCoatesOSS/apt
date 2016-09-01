@@ -33,14 +33,29 @@ class debListParser : public pkgCacheGenerator::ListParser
    unsigned long iOffset;
    string Arch;
    
+   unsigned long FindTagWrite(const char *Tag);
    unsigned long UniqFindTagWrite(const char *Tag);
    bool ParseStatus(pkgCache::PkgIterator Pkg,pkgCache::VerIterator Ver);
    bool ParseDepends(pkgCache::VerIterator Ver,const char *Tag,
 		     unsigned int Type);
    bool ParseProvides(pkgCache::VerIterator Ver);
+   bool ParseTag(pkgCache::PkgIterator Pkg);
    static bool GrabWord(string Word,WordList *List,unsigned char &Out);
+   static bool GrabWord(const srkString &Word,WordList *List,unsigned char &Out);
    
    public:
+
+   srkString Find(const char *Tag) {
+      srkString S;
+      const char *Stop;
+      if (Section.Find(Tag, S.Start, Stop))
+         S.Size = Stop - S.Start;
+      else {
+         S.Start = NULL;
+         S.Size = 0;
+      }
+      return S;
+   }
 
    static unsigned char GetPrio(string Str);
       
@@ -49,6 +64,7 @@ class debListParser : public pkgCacheGenerator::ListParser
    virtual string Version();
    virtual bool NewVersion(pkgCache::VerIterator Ver);
    virtual string Description();
+   void Description(srkString &Str);
    virtual string DescriptionLanguage();
    virtual MD5SumValue Description_md5();
    virtual unsigned short VersionHash();
@@ -64,6 +80,9 @@ class debListParser : public pkgCacheGenerator::ListParser
    
    static const char *ParseDepends(const char *Start,const char *Stop,
 			    string &Package,string &Ver,unsigned int &Op,
+			    bool ParseArchFlags = false);
+   static const char *ParseDepends(const char *Start,const char *Stop,
+			    srkString &Package,srkString &Ver,unsigned int &Op,
 			    bool ParseArchFlags = false);
    static const char *ConvertRelation(const char *I,unsigned int &Op);
 

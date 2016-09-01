@@ -29,6 +29,8 @@
 #include <algorithm>
 #include <stdint.h>
 
+#include <apt-pkg/srkstring.h>
+
 using std::string;
 using std::min;
 
@@ -48,10 +50,12 @@ class MD5SumValue
          {for (int I = 0; I != sizeof(Sum); I++) S[I] = Sum[I];};
    inline operator string() const {return Value();};
    bool Set(string Str);
+   bool Set(const srkString &Str);
    inline void Set(unsigned char S[16]) 
          {for (int I = 0; I != sizeof(Sum); I++) Sum[I] = S[I];};
 
    MD5SumValue(string Str);
+   MD5SumValue(const srkString &Str);
    MD5SumValue();
 };
 

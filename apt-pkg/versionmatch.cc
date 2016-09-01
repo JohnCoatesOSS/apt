@@ -63,7 +63,7 @@ pkgVersionMatch::pkgVersionMatch(string Data,MatchType Type) : Type(Type)
 	 if (isdigit(Data[0]))
 	    RelVerStr = Data;
 	 else
-	    RelRelease = Data;
+	    RelArchive = Data;
 
 	 if (RelVerStr.length() > 0 && RelVerStr.end()[-1] == '*')
 	 {
@@ -94,8 +94,6 @@ pkgVersionMatch::pkgVersionMatch(string Data,MatchType Type) : Type(Type)
 	    RelOrigin = Fragments[J]+2;
 	 else if (stringcasecmp(Fragments[J],Fragments[J]+2,"a=") == 0)
 	    RelArchive = Fragments[J]+2;
-	 else if (stringcasecmp(Fragments[J],Fragments[J]+2,"n=") == 0)
-	    RelCodename = Fragments[J]+2;
 	 else if (stringcasecmp(Fragments[J],Fragments[J]+2,"l=") == 0)
 	    RelLabel = Fragments[J]+2;
 	 else if (stringcasecmp(Fragments[J],Fragments[J]+2,"c=") == 0)
@@ -177,7 +175,6 @@ bool pkgVersionMatch::FileMatch(pkgCache::PkgFileIterator File)
 
       if (RelVerStr.empty() == true && RelOrigin.empty() == true &&
 	  RelArchive.empty() == true && RelLabel.empty() == true &&
-	  RelRelease.empty() == true && RelCodename.empty() == true &&
 	  RelComponent.empty() == true)
 	 return false;
 
@@ -193,16 +190,6 @@ bool pkgVersionMatch::FileMatch(pkgCache::PkgFileIterator File)
 	 if (File->Archive == 0 ||
 	     stringcasecmp(RelArchive,File.Archive()) != 0)
             return false;
-      if (RelCodename.empty() == false)
-	 if (File->Codename == 0 ||
-	     stringcasecmp(RelCodename,File.Codename()) != 0)
-            return false;
-      if (RelRelease.empty() == false)
-	 if ((File->Archive == 0 ||
-	     stringcasecmp(RelRelease,File.Archive()) != 0) &&
-             (File->Codename == 0 ||
-	      stringcasecmp(RelRelease,File.Codename()) != 0))
-	       return false;
       if (RelLabel.empty() == false)
 	 if (File->Label == 0 ||
 	     stringcasecmp(RelLabel,File.Label()) != 0)

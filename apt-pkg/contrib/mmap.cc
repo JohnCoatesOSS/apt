@@ -174,11 +174,11 @@ DynamicMMap::DynamicMMap(unsigned long Flags,unsigned long WorkSpace) :
 #ifdef _POSIX_MAPPED_FILES
    // Set the permissions.
    int Prot = PROT_READ;
-   int Map = MAP_PRIVATE | MAP_ANONYMOUS;
+   int Map = MAP_PRIVATE | MAP_ANON;
    if ((Flags & ReadOnly) != ReadOnly)
       Prot |= PROT_WRITE;
    if ((Flags & Public) == Public)
-      Map = MAP_SHARED | MAP_ANONYMOUS;
+      Map = MAP_SHARED | MAP_ANON;
 
    // use anonymous mmap() to get the memory
    Base = (unsigned char*) mmap(0, WorkSpace, Prot, Map, -1, 0);

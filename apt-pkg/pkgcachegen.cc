@@ -33,6 +33,8 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdio.h>
+
+#include <apt-pkg/deblistparser.h>
 									/*}}}*/
 typedef vector<pkgIndexFile *>::iterator FileIterator;
 
@@ -103,34 +105,51 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
 				  pkgCache::VerIterator *OutVer)
 {
    List.Owner = this;
+   debListParser *debian(dynamic_cast<debListParser *>(&List));
 
    unsigned int Counter = 0;
+  step:
    while (List.Step() == true)
    {
       // Get a pointer to the package structure
-      string PackageName = List.Package();
+      srkString PackageName;
+      if (debian != NULL)
+         PackageName = debian->Find("Package");
+      else
+         PackageName = List.Package();
       if (PackageName.empty() == true)
 	 return false;
       
       pkgCache::PkgIterator Pkg;
-      if (NewPackage(Pkg,PackageName) == false)
-	 return _error->Error(_("Error occurred while processing %s (NewPackage)"),PackageName.c_str());
+      if (NewPackage(Pkg,PackageName) == false) {
+	 _error->Warning(_("Error occurred while processing %s (NewPackage)"),std::string(PackageName).c_str());
+         goto step;
+      }
+
       Counter++;
       if (Counter % 100 == 0 && Progress != 0)
 	 Progress->Progress(List.Offset());
 
+      string language(List.DescriptionLanguage());
+
       /* Get a pointer to the version structure. We know the list is sorted
          so we use that fact in the search. Insertion of new versions is
 	 done with correct sorting */
-      string Version = List.Version();
+      srkString Version;
+      if (debian != NULL)
+         Version = debian->Find("Version");
+      else
+         Version = List.Version();
       if (Version.empty() == true)
       {
 	 // we first process the package, then the descriptions
 	 // (this has the bonus that we get MMap error when we run out
 	 //  of MMap space)
-	 if (List.UsePackage(Pkg,pkgCache::VerIterator(Cache)) == false)
-	    return _error->Error(_("Error occurred while processing %s (UsePackage1)"),
-				 PackageName.c_str());
+	 if (List.UsePackage(Pkg,pkgCache::VerIterator(Cache)) == false) {
+	    _error->Warning(_("Error occurred while processing %s (UsePackage1)"),
+				 std::string(PackageName).c_str());
+            goto step;
+         }
 
  	 // Find the right version to write the description
  	 MD5SumValue CurMd5 = List.Description_md5();
@@ -147,7 +166,7 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
 	    // md5 && language
 	    for ( ; Desc.end() == false; Desc++)
 	       if (MD5SumValue(Desc.md5()) == CurMd5 && 
-	           Desc.LanguageCode() == List.DescriptionLanguage())
+	           Desc.LanguageCode() == language)
 		  duplicate=true;
 	    if(duplicate)
 	       continue;
@@ -159,11 +178,13 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
  	       if (MD5SumValue(Desc.md5()) == CurMd5) 
                {
  		  // Add new description
- 		  *LastDesc = NewDescription(Desc, List.DescriptionLanguage(), CurMd5, *LastDesc);
+ 		  *LastDesc = NewDescription(Desc, language, CurMd5, *LastDesc);
  		  Desc->ParentPkg = Pkg.Index();
 		  
-		  if ((*LastDesc == 0 && _error->PendingError()) || NewFileDesc(Desc,List) == false)
- 		     return _error->Error(_("Error occurred while processing %s (NewFileDesc1)"),PackageName.c_str());
+		  if ((*LastDesc == 0 && _error->PendingError()) || NewFileDesc(Desc,List) == false) {
+ 		     _error->Warning(_("Error occurred while processing %s (NewFileDesc1)"),std::string(PackageName).c_str());
+                     goto step;
+                  }
  		  break;
  	       }
 	    }
@@ -187,13 +208,17 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
       unsigned long Hash = List.VersionHash();
       if (Res == 0 && Ver->Hash == Hash)
       {
-	 if (List.UsePackage(Pkg,Ver) == false)
-	    return _error->Error(_("Error occurred while processing %s (UsePackage2)"),
-				 PackageName.c_str());
+	 if (List.UsePackage(Pkg,Ver) == false) {
+	    _error->Warning(_("Error occurred while processing %s (UsePackage2)"),
+				 std::string(PackageName).c_str());
+            goto step;
+         }
 
-	 if (NewFileVer(Ver,List) == false)
-	    return _error->Error(_("Error occurred while processing %s (NewFileVer1)"),
-				 PackageName.c_str());
+	 if (NewFileVer(Ver,List) == false) {
+	    _error->Warning(_("Error occurred while processing %s (NewFileVer1)"),
+				 std::string(PackageName).c_str());
+            goto step;
+         }
 	 
 	 // Read only a single record and return
 	 if (OutVer != 0)
@@ -222,17 +247,23 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
       Ver->ParentPkg = Pkg.Index();
       Ver->Hash = Hash;
 
-      if ((*LastVer == 0 && _error->PendingError()) || List.NewVersion(Ver) == false)
-	 return _error->Error(_("Error occurred while processing %s (NewVersion1)"),
-			      PackageName.c_str());
+      if ((*LastVer == 0 && _error->PendingError()) || List.NewVersion(Ver) == false) {
+	 _error->Warning(_("Error occurred while processing %s (NewVersion1)"),
+			      std::string(PackageName).c_str());
+         goto step;
+      }
 
-      if (List.UsePackage(Pkg,Ver) == false)
-	 return _error->Error(_("Error occurred while processing %s (UsePackage3)"),
-			      PackageName.c_str());
+      if (List.UsePackage(Pkg,Ver) == false) {
+	 _error->Warning(_("Error occurred while processing %s (UsePackage3)"),
+			      std::string(PackageName).c_str());
+         goto step;
+      }
       
-      if (NewFileVer(Ver,List) == false)
-	 return _error->Error(_("Error occurred while processing %s (NewVersion2)"),
-			      PackageName.c_str());
+      if (NewFileVer(Ver,List) == false) {
+	 _error->Warning(_("Error occurred while processing %s (NewVersion2)"),
+			      std::string(PackageName).c_str());
+         goto step;
+      }
 
       // Read only a single record and return
       if (OutVer != 0)
@@ -251,11 +282,13 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
       for (; Desc.end() == false; LastDesc = &Desc->NextDesc, Desc++);
 
       // Add new description
-      *LastDesc = NewDescription(Desc, List.DescriptionLanguage(), List.Description_md5(), *LastDesc);
+      *LastDesc = NewDescription(Desc, language, List.Description_md5(), *LastDesc);
       Desc->ParentPkg = Pkg.Index();
 
-      if ((*LastDesc == 0 && _error->PendingError()) || NewFileDesc(Desc,List) == false)
-	 return _error->Error(_("Error occurred while processing %s (NewFileDesc2)"),PackageName.c_str());
+      if ((*LastDesc == 0 && _error->PendingError()) || NewFileDesc(Desc,List) == false) {
+	 _error->Warning(_("Error occurred while processing %s (NewFileDesc2)"),std::string(PackageName).c_str());
+         goto step;
+      }
    }
 
    FoundFileDeps |= List.HasFileDeps();
@@ -263,7 +296,7 @@ bool pkgCacheGenerator::MergeList(ListParser &List,
    if (Cache.HeaderP->PackageCount >= (1ULL<<sizeof(Cache.PkgP->ID)*8)-1)
       return _error->Error(_("Wow, you exceeded the number of package "
 			     "names this APT is capable of."));
-   if (Cache.HeaderP->VersionCount >= (1ULL<<(sizeof(Cache.VerP->ID)*8))-1)
+   if (Cache.HeaderP->VersionCount >= (1ULL<<(sizeof(Cache.VerP->ID1)*8+sizeof(Cache.VerP->ID2)*8))-1)
       return _error->Error(_("Wow, you exceeded the number of versions "
 			     "this APT is capable of."));
    if (Cache.HeaderP->DescriptionCount >= (1ULL<<(sizeof(Cache.DescP->ID)*8))-1)
@@ -328,6 +361,11 @@ bool pkgCacheGenerator::MergeFileProvides(ListParser &List)
 /* This creates a new package structure and adds it to the hash table */
 bool pkgCacheGenerator::NewPackage(pkgCache::PkgIterator &Pkg,const string &Name)
 {
+   return NewPackage(Pkg, srkString(Name));
+}
+
+bool pkgCacheGenerator::NewPackage(pkgCache::PkgIterator &Pkg,const srkString &Name)
+{
    Pkg = Cache.FindPkg(Name);
    if (Pkg.end() == false)
       return true;
@@ -345,7 +383,7 @@ bool pkgCacheGenerator::NewPackage(pkgCache::PkgIterator &Pkg,const string &Name
    Cache.HeaderP->HashTable[Hash] = Package;
    
    // Set the name and the ID
-   Pkg->Name = Map.WriteString(Name);
+   Pkg->Name = Map.WriteString(Name.Start,Name.Size);
    if (Pkg->Name == 0)
       return false;
    Pkg->ID = Cache.HeaderP->PackageCount++;
@@ -393,6 +431,13 @@ unsigned long pkgCacheGenerator::NewVersion(pkgCache::VerIterator &Ver,
 					    const string &VerStr,
 					    unsigned long Next)
 {
+   return NewVersion(Ver, srkString(VerStr), Next);
+}
+
+unsigned long pkgCacheGenerator::NewVersion(pkgCache::VerIterator &Ver,
+					    const srkString &VerStr,
+					    unsigned long Next)
+{
    // Get a structure
    unsigned long Version = Map.Allocate(sizeof(pkgCache::Version));
    if (Version == 0)
@@ -401,8 +446,10 @@ unsigned long pkgCacheGenerator::NewVersion(pkgCache::VerIterator &Ver,
    // Fill it in
    Ver = pkgCache::VerIterator(Cache,Cache.VerP + Version);
    Ver->NextVer = Next;
-   Ver->ID = Cache.HeaderP->VersionCount++;
-   Ver->VerStr = Map.WriteString(VerStr);
+   unsigned int ID = Cache.HeaderP->VersionCount++;
+   Ver->ID1 = ID & 0xffff;
+   Ver->ID2 = ID >> 16;
+   Ver->VerStr = Map.WriteString(VerStr.Start, VerStr.Size);
    if (Ver->VerStr == 0)
       return 0;
    
@@ -478,6 +525,15 @@ bool pkgCacheGenerator::ListParser::NewDepends(pkgCache::VerIterator Ver,
 					       unsigned int Op,
 					       unsigned int Type)
 {
+    return NewDepends(Ver, srkString(PackageName), srkString(Version), Op, Type);
+}
+
+bool pkgCacheGenerator::ListParser::NewDepends(pkgCache::VerIterator Ver,
+					       const srkString &PackageName,
+					       const srkString &Version,
+					       unsigned int Op,
+					       unsigned int Type)
+{
    pkgCache &Cache = Owner->Cache;
    
    // Get a structure
@@ -541,6 +597,13 @@ bool pkgCacheGenerator::ListParser::NewProvides(pkgCache::VerIterator Ver,
 					        const string &PackageName,
 						const string &Version)
 {
+   return NewProvides(Ver, srkString(PackageName), srkString(Version));
+}
+
+bool pkgCacheGenerator::ListParser::NewProvides(pkgCache::VerIterator Ver,
+					        const srkString &PackageName,
+						const srkString &Version)
+{
    pkgCache &Cache = Owner->Cache;
 
    // We do not add self referencing provides
@@ -570,6 +633,32 @@ bool pkgCacheGenerator::ListParser::NewProvides(pkgCache::VerIterator Ver,
    Prv->ParentPkg = Pkg.Index();
    Prv->NextProvides = Pkg->ProvidesList;
    Pkg->ProvidesList = Prv.Index();
+   
+   return true;
+}
+									/*}}}*/
+// ListParser::NewTag - Create a Tag element				/*{{{*/
+// ---------------------------------------------------------------------
+/* */
+bool pkgCacheGenerator::ListParser::NewTag(pkgCache::PkgIterator Pkg,
+					   const char *NameStart,
+					   unsigned int NameSize)
+{
+   pkgCache &Cache = Owner->Cache;
+
+   // Get a structure
+   unsigned long Tagg = Owner->Map.Allocate(sizeof(pkgCache::Tag));
+   if (Tagg == 0)
+      return false;
+   Cache.HeaderP->TagCount++;
+   
+   // Fill it in
+   pkgCache::TagIterator Tg(Cache,Cache.TagP + Tagg);
+   Tg->Name = WriteString(NameStart,NameSize);
+   if (Tg->Name == 0)
+      return false;
+   Tg->NextTag = Pkg->TagList;
+   Pkg->TagList = Tg.Index();
    
    return true;
 }
@@ -827,7 +916,7 @@ bool pkgMakeStatusCache(pkgSourceList &List,OpProgress &Progress,
 			MMap **OutMap,bool AllowMem)
 {
    bool const Debug = _config->FindB("Debug::pkgCacheGen", false);
-   unsigned long const MapSize = _config->FindI("APT::Cache-Limit",24*1024*1024);
+   unsigned long const MapSize = _config->FindI("APT::Cache-Limit",128*1024*1024);
    
    vector<pkgIndexFile *> Files;
    for (vector<metaIndex *>::const_iterator i = List.begin();
@@ -992,7 +1081,7 @@ bool pkgMakeStatusCache(pkgSourceList &List,OpProgress &Progress,
 /* */
 bool pkgMakeOnlyStatusCache(OpProgress &Progress,DynamicMMap **OutMap)
 {
-   unsigned long MapSize = _config->FindI("APT::Cache-Limit",20*1024*1024);
+   unsigned long MapSize = _config->FindI("APT::Cache-Limit",128*1024*1024);
    vector<pkgIndexFile *> Files;
    unsigned long EndOfSource = Files.size();
    if (_system->AddStatusFiles(Files) == false)

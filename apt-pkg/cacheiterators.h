@@ -71,6 +71,7 @@ class pkgCache::PkgIterator
    inline pkgCache *Cache() {return Owner;};
    
    inline const char *Name() const {return Pkg->Name == 0?0:Owner->StrP + Pkg->Name;};
+   inline const char *Display() const {return Pkg->Display == 0?0:Owner->StrP + Pkg->Display;};
    inline const char *Section() const {return Pkg->Section == 0?0:Owner->StrP + Pkg->Section;};
    inline bool Purge() const {return Pkg->CurrentState == pkgCache::State::Purge ||
 	 (Pkg->CurrentVer == 0 && Pkg->CurrentState == pkgCache::State::NotInstalled);};
@@ -78,6 +79,7 @@ class pkgCache::PkgIterator
    inline VerIterator CurrentVer() const;
    inline DepIterator RevDependsList() const;
    inline PrvIterator ProvidesList() const;
+   inline TagIterator TagList() const;
    inline unsigned long Index() const {return Pkg - Owner->PkgP;};
    OkState State() const;
 
@@ -131,6 +133,7 @@ class pkgCache::VerIterator
    inline pkgCache *Cache() {return Owner;};
       
    inline const char *VerStr() const {return Ver->VerStr == 0?0:Owner->StrP + Ver->VerStr;};
+   inline const char *Display() const {return Ver->Display == 0?0:Owner->StrP + Ver->Display;};
    inline const char *Section() const {return Ver->Section == 0?0:Owner->StrP + Ver->Section;};
    inline const char *Arch() const {return Ver->Arch == 0?0:Owner->StrP + Ver->Arch;};
    inline PkgIterator ParentPkg() const {return PkgIterator(*Owner,Owner->PkgP + Ver->ParentPkg);};
@@ -153,6 +156,48 @@ class pkgCache::VerIterator
    { 
       if (Ver == 0)
 	 Ver = Owner.VerP;
+   };
+};
+									/*}}}*/
+// Tag Iterator								/*{{{*/
+class pkgCache::TagIterator
+{
+   Tag *Tg;
+   pkgCache *Owner;
+   
+   void _dummy();
+   
+   public:
+
+   // Iteration
+   void operator ++(int) {if (Tg != Owner->TagP) Tg = Owner->TagP + Tg->NextTag;};
+   inline void operator ++() {operator ++(0);};
+   inline bool end() const {return Tg == Owner->TagP?true:false;};
+   inline void operator =(const TagIterator &B) {Tg = B.Tg; Owner = B.Owner;};
+   
+   // Comparison
+   inline bool operator ==(const TagIterator &B) const {return Tg == B.Tg;};
+   inline bool operator !=(const TagIterator &B) const {return Tg != B.Tg;};
+   int CompareTag(const TagIterator &B) const;
+   
+   // Accessors
+   inline Tag *operator ->() {return Tg;};
+   inline Tag const *operator ->() const {return Tg;};
+   inline Tag &operator *() {return *Tg;};
+   inline Tag const &operator *() const {return *Tg;};
+   inline operator Tag *() {return Tg == Owner->TagP?0:Tg;};
+   inline operator Tag const *() const {return Tg == Owner->TagP?0:Tg;};
+   inline pkgCache *Cache() {return Owner;};
+      
+   inline const char *Name() const {return Owner->StrP + Tg->Name;};
+   inline unsigned long Index() const {return Tg - Owner->TagP;};
+
+   inline TagIterator() : Tg(0), Owner(0) {};   
+   inline TagIterator(pkgCache &Owner,Tag *Trg = 0) : Tg(Trg), 
+              Owner(&Owner) 
+   { 
+      if (Tg == 0)
+	 Tg = Owner.TagP;
    };
 };
 									/*}}}*/
@@ -342,7 +387,6 @@ class pkgCache::PkgFileIterator
    inline const char *Component() const {return File->Component == 0?0:Owner->StrP + File->Component;};
    inline const char *Version() const {return File->Version == 0?0:Owner->StrP + File->Version;};
    inline const char *Origin() const {return File->Origin == 0?0:Owner->StrP + File->Origin;};
-   inline const char *Codename() const {return File->Codename ==0?0:Owner->StrP + File->Codename;};
    inline const char *Label() const {return File->Label == 0?0:Owner->StrP + File->Label;};
    inline const char *Site() const {return File->Site == 0?0:Owner->StrP + File->Site;};
    inline const char *Architecture() const {return File->Architecture == 0?0:Owner->StrP + File->Architecture;};
@@ -432,6 +476,8 @@ inline pkgCache::DepIterator pkgCache::PkgIterator::RevDependsList() const
        {return DepIterator(*Owner,Owner->DepP + Pkg->RevDepends,Pkg);};
 inline pkgCache::PrvIterator pkgCache::PkgIterator::ProvidesList() const
        {return PrvIterator(*Owner,Owner->ProvideP + Pkg->ProvidesList,Pkg);};
+inline pkgCache::TagIterator pkgCache::PkgIterator::TagList() const
+       {return TagIterator(*Owner,Owner->TagP + Pkg->TagList);};
 inline pkgCache::DescIterator pkgCache::VerIterator::DescriptionList() const
        {return DescIterator(*Owner,Owner->DescP + Ver->DescriptionList);};
 inline pkgCache::PrvIterator pkgCache::VerIterator::ProvidesList() const

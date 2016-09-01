@@ -295,9 +295,6 @@ class pkgDepCache : protected pkgCache::Namespace
    unsigned long iPolicyBrokenCount;
    unsigned long iBadCount;
 
-   bool DebugMarker;
-   bool DebugAutoInstall;
-
    Policy *delLocalPolicy;           // For memory clean up..
    Policy *LocalPolicy;
    
@@ -390,9 +387,12 @@ class pkgDepCache : protected pkgCache::Namespace
     */
    // @{
    void MarkKeep(PkgIterator const &Pkg, bool Soft = false,
-		 bool FromUser = true, unsigned long Depth = 0);
-   void MarkDelete(PkgIterator const &Pkg, bool Purge = false,
-                   unsigned long Depth = 0, bool FromUser = true);
+		 bool FromUser = true);
+   void MarkKeep(PkgIterator const &Pkg, bool Soft,
+		 bool FromUser, unsigned long Depth);
+   void MarkDelete(PkgIterator const &Pkg,bool Purge = false);
+   void MarkDelete(PkgIterator const &Pkg, bool Purge,
+                   unsigned long Depth, bool FromUser = true);
    void MarkInstall(PkgIterator const &Pkg,bool AutoInst = true,
 		    unsigned long Depth = 0, bool FromUser = true,
 		    bool ForceImportantDeps = false);
@@ -420,7 +420,7 @@ class pkgDepCache : protected pkgCache::Namespace
     *  \param Depth     recursive deep of this Marker call
     *  \param FromUser  was the install requested by the user?
     */
-   virtual bool IsInstallOk(const PkgIterator &Pkg,bool AutoInst = true,
+   bool IsInstallOk(const PkgIterator &Pkg,bool AutoInst = true,
 			    unsigned long Depth = 0, bool FromUser = true);
 
    /** \return \b true if it's OK for MarkDelete to remove
@@ -439,7 +439,7 @@ class pkgDepCache : protected pkgCache::Namespace
     *  \param Depth     recursive deep of this Marker call
     *  \param FromUser  was the remove requested by the user?
     */
-   virtual bool IsDeleteOk(const PkgIterator &Pkg,bool Purge = false,
+   bool IsDeleteOk(const PkgIterator &Pkg,bool Purge = false,
 			    unsigned long Depth = 0, bool FromUser = true);
 
    // This is for debuging

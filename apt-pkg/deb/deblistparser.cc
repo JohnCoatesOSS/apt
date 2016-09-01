@@ -39,6 +39,18 @@ debListParser::debListParser(FileFd *File) : Tags(File)
 // ListParser::UniqFindTagWrite - Find the tag and write a unq string	/*{{{*/
 // ---------------------------------------------------------------------
 /* */
+unsigned long debListParser::FindTagWrite(const char *Tag)
+{
+   const char *Start;
+   const char *Stop;
+   if (Section.Find(Tag,Start,Stop) == false)
+      return 0;
+   return WriteString(Start,Stop - Start);
+}
+									/*}}}*/
+// ListParser::UniqFindTagWrite - Find the tag and write a unq string	/*{{{*/
+// ---------------------------------------------------------------------
+/* */
 unsigned long debListParser::UniqFindTagWrite(const char *Tag)
 {
    const char *Start;
@@ -74,6 +86,10 @@ string debListParser::Version()
 /* */
 bool debListParser::NewVersion(pkgCache::VerIterator Ver)
 {
+   Ver->Display = FindTagWrite("Name");
+   if (Ver->Display == 0)
+      Ver->Display = FindTagWrite("Maemo-Display-Name");
+
    // Parse the section
    Ver->Section = UniqFindTagWrite("Section");
    Ver->Arch = UniqFindTagWrite("Architecture");
@@ -90,7 +106,7 @@ bool debListParser::NewVersion(pkgCache::VerIterator Ver)
    const char *Stop;
    if (Section.Find("Priority",Start,Stop) == true)
    {      
-      if (GrabWord(string(Start,Stop-Start),PrioList,Ver->Priority) == false)
+      if (GrabWord(srkString(Start,Stop-Start),PrioList,Ver->Priority) == false)
 	 Ver->Priority = pkgCache::State::Extra;
    }
 
@@ -128,10 +144,19 @@ bool debListParser::NewVersion(pkgCache::VerIterator Ver)
    only describe package properties */
 string debListParser::Description()
 {
-   if (DescriptionLanguage().empty())
-      return Section.FindS("Description");
-   else
-      return Section.FindS(("Description-" + pkgIndexFile::LanguageCode()).c_str());
+   srkString description;
+   Description(description);
+   return description;
+}
+
+void debListParser::Description(srkString &Str) {
+   const char *Start, *Stop;
+   if (!Section.Find("Description", Start, Stop))
+      if (!Section.Find(("Description-" + pkgIndexFile::LanguageCode()).c_str(), Start, Stop)) {
+         Start = NULL;
+         Stop = NULL;
+      }
+   Str.assign(Start, Stop);
 }
                                                                         /*}}}*/
 // ListParser::DescriptionLanguage - Return the description lang string	/*{{{*/
@@ -141,7 +166,8 @@ string debListParser::Description()
    assumed to describe original description. */
 string debListParser::DescriptionLanguage()
 {
-   return Section.FindS("Description").empty() ? pkgIndexFile::LanguageCode() : "";
+   const char *Start, *Stop;
+   return Section.Find("Description", Start, Stop) ? std::string() : pkgIndexFile::LanguageCode();
 }
                                                                         /*}}}*/
 // ListParser::Description - Return the description_md5 MD5SumValue	/*{{{*/
@@ -152,15 +178,18 @@ string debListParser::DescriptionLanguage()
  */
 MD5SumValue debListParser::Description_md5()
 {
-   string value = Section.FindS("Description-md5");
-
-   if (value.empty()) 
+   const char *Start;
+   const char *Stop;
+   if (!Section.Find("Description-md5", Start, Stop))
    {
       MD5Summation md5;
-      md5.Add((Description() + "\n").c_str());
+      srkString description;
+      Description(description);
+      md5.Add((const unsigned char *) description.Start, description.Size);
+      md5.Add("\n");
       return md5.Result();
    } else
-      return MD5SumValue(value);
+      return MD5SumValue(srkString(Start, Stop));
 }
                                                                         /*}}}*/
 // ListParser::UsePackage - Update a package structure			/*{{{*/
@@ -170,6 +199,10 @@ MD5SumValue debListParser::Description_md5()
 bool debListParser::UsePackage(pkgCache::PkgIterator Pkg,
 			       pkgCache::VerIterator Ver)
 {
+   if (Pkg->Display == 0)
+      Pkg->Display = FindTagWrite("Name");
+   if (Pkg->Display == 0)
+      Pkg->Display = FindTagWrite("Maemo-Display-Name");
    if (Pkg->Section == 0)
       Pkg->Section = UniqFindTagWrite("Section");
    if (Section.FindFlag("Essential",Pkg->Flags,pkgCache::Flag::Essential) == false)
@@ -182,6 +215,11 @@ bool debListParser::UsePackage(pkgCache::PkgIterator Pkg,
    
    if (ParseStatus(Pkg,Ver) == false)
       return false;
+
+   if (Pkg->TagList == 0)
+      if (ParseTag(Pkg) == false)
+         return false;
+
    return true;
 }
 									/*}}}*/
@@ -210,18 +248,18 @@ unsigned short debListParser::VersionHash()
       /* Strip out any spaces from the text, this undoes dpkgs reformatting
          of certain fields. dpkg also has the rather interesting notion of
          reformatting depends operators < -> <= */
-      char *I = S;
+      char *I2 = (char *)S;
       for (; Start != End; Start++)
       {
 	 if (isspace(*Start) == 0)
-	    *I++ = tolower_ascii(*Start);
+	    *I2++ = tolower_ascii(*Start);
 	 if (*Start == '<' && Start[1] != '<' && Start[1] != '=')
-	    *I++ = '=';
+	    *I2++ = '=';
 	 if (*Start == '>' && Start[1] != '>' && Start[1] != '=')
-	    *I++ = '=';
+	    *I2++ = '=';
       }
 
-      Result = AddCRC16(Result,S,I - S);
+      Result = AddCRC16(Result,S,I2 - S);
    }
    
    return Result;
@@ -261,7 +299,7 @@ bool debListParser::ParseStatus(pkgCache::PkgIterator Pkg,
                           {"deinstall",pkgCache::State::DeInstall},
                           {"purge",pkgCache::State::Purge},
                           {}};
-   if (GrabWord(string(Start,I-Start),WantList,Pkg->SelectedState) == false)
+   if (GrabWord(srkString(Start,I-Start),WantList,Pkg->SelectedState) == false)
       return _error->Error("Malformed 1st word in the Status line");
 
    // Isloate the next word
@@ -277,7 +315,7 @@ bool debListParser::ParseStatus(pkgCache::PkgIterator Pkg,
                           {"hold",pkgCache::State::HoldInst},
                           {"hold-reinstreq",pkgCache::State::HoldReInstReq},
                           {}};
-   if (GrabWord(string(Start,I-Start),FlagList,Pkg->InstState) == false)
+   if (GrabWord(srkString(Start,I-Start),FlagList,Pkg->InstState) == false)
       return _error->Error("Malformed 2nd word in the Status line");
 
    // Isloate the last word
@@ -299,7 +337,7 @@ bool debListParser::ParseStatus(pkgCache::PkgIterator Pkg,
                             {"post-inst-failed",pkgCache::State::HalfConfigured},
                             {"removal-failed",pkgCache::State::HalfInstalled},
                             {}};
-   if (GrabWord(string(Start,I-Start),StatusList,Pkg->CurrentState) == false)
+   if (GrabWord(srkString(Start,I-Start),StatusList,Pkg->CurrentState) == false)
       return _error->Error("Malformed 3rd word in the Status line");
 
    /* A Status line marks the package as indicating the current
@@ -383,6 +421,17 @@ const char *debListParser::ConvertRelation(const char *I,unsigned int &Op)
    bit by bit. */
 const char *debListParser::ParseDepends(const char *Start,const char *Stop,
 					string &Package,string &Ver,
+					unsigned int &Op, bool ParseArchFlags)
+{
+   srkString cPackage, cVer;
+   const char *Value = ParseDepends(Start, Stop, cPackage, cVer, Op, ParseArchFlags);
+   Package = cPackage;
+   Ver = cVer;
+   return Value;
+}
+
+const char *debListParser::ParseDepends(const char *Start,const char *Stop,
+					srkString &Package,srkString &Ver,
 					unsigned int &Op, bool ParseArchFlags)
 {
    // Strip off leading space
@@ -484,7 +533,7 @@ const char *debListParser::ParseDepends(const char *Start,const char *Stop,
 	    Found = !Found;
 	 
          if (Found == false)
-	    Package = ""; /* not for this arch */
+	    Package.clear(); /* not for this arch */
       }
       
       // Skip whitespace
@@ -516,15 +565,17 @@ bool debListParser::ParseDepends(pkgCache::VerIterator Ver,
    if (Section.Find(Tag,Start,Stop) == false)
       return true;
    
-   string Package;
-   string Version;
+   srkString Package;
+   srkString Version;
    unsigned int Op;
 
    while (1)
    {
       Start = ParseDepends(Start,Stop,Package,Version,Op);
-      if (Start == 0)
-	 return _error->Error("Problem parsing dependency %s",Tag);
+      if (Start == 0) {
+	 _error->Warning("Problem parsing dependency %s",Tag);
+         return false;
+      }
       
       if (NewDepends(Ver,Package,Version,Op,Type) == false)
 	 return false;
@@ -544,17 +595,20 @@ bool debListParser::ParseProvides(pkgCache::VerIterator Ver)
    if (Section.Find("Provides",Start,Stop) == false)
       return true;
    
-   string Package;
-   string Version;
+   srkString Package;
+   srkString Version;
    unsigned int Op;
 
    while (1)
    {
       Start = ParseDepends(Start,Stop,Package,Version,Op);
-      if (Start == 0)
-	 return _error->Error("Problem parsing Provides line");
+      if (Start == 0) {
+	 _error->Warning("Problem parsing Provides line");
+         return false;
+      }
+
       if (Op != pkgCache::Dep::NoOp) {
-	 _error->Warning("Ignoring Provides line with DepCompareOp for package %s", Package.c_str());
+	 _error->Warning("Ignoring Provides line with DepCompareOp for package %s", std::string(Package).c_str());
       } else {
 	 if (NewProvides(Ver,Package,Version) == false)
 	    return false;
@@ -567,14 +621,59 @@ bool debListParser::ParseProvides(pkgCache::VerIterator Ver)
    return true;
 }
 									/*}}}*/
+// ListParser::ParseTag - Parse the tag list				/*{{{*/
+// ---------------------------------------------------------------------
+/* */
+bool debListParser::ParseTag(pkgCache::PkgIterator Pkg)
+{
+   const char *Start;
+   const char *Stop;
+   if (Section.Find("Tag",Start,Stop) == false)
+      return true;
+   
+   while (1) {
+      while (1) {
+         if (Start == Stop)
+            return true;
+         if (Stop[-1] != ' ' && Stop[-1] != '\t')
+            break;
+         --Stop;
+      }
+
+      const char *Begin = Stop - 1;
+      while (Begin != Start && Begin[-1] != ' ' && Begin[-1] != ',')
+         --Begin;
+
+      if (NewTag(Pkg, Begin, Stop - Begin) == false)
+         return false;
+
+      while (1) {
+         if (Begin == Start)
+            return true;
+         if (Begin[-1] == ',')
+            break;
+         --Begin;
+      }
+
+      Stop = Begin - 1;
+   }
+
+   return true;
+}
+									/*}}}*/
 // ListParser::GrabWord - Matches a word and returns			/*{{{*/
 // ---------------------------------------------------------------------
 /* Looks for a word in a list of words - for ParseStatus */
 bool debListParser::GrabWord(string Word,WordList *List,unsigned char &Out)
 {
+   return GrabWord(srkString(Word), List, Out);
+}
+
+bool debListParser::GrabWord(const srkString &Word,WordList *List,unsigned char &Out)
+{
    for (unsigned int C = 0; List[C].Str != 0; C++)
    {
-      if (strcasecmp(Word.c_str(),List[C].Str) == 0)
+      if (strncasecmp(Word.Start,List[C].Str,Word.Size) == 0)
       {
 	 Out = List[C].Val;
 	 return true;
@@ -591,11 +690,18 @@ bool debListParser::Step()
    iOffset = Tags.Offset();
    while (Tags.Step(Section) == true)
    {      
+      const char *Start;
+      const char *Stop;
+
+      if (Section.Find("Package",Start,Stop) == false) {
+         _error->Warning("Encountered a section with no Package: header");
+	 continue;
+      }
+
       /* See if this is the correct Architecture, if it isn't then we
          drop the whole section. A missing arch tag only happens (in theory)
          inside the Status file, so that is a positive return */
-      const char *Start;
-      const char *Stop;
+
       if (Section.Find("Architecture",Start,Stop) == false)
 	 return true;
 
@@ -603,6 +709,9 @@ bool debListParser::Step()
 	 return true;
 
       if (stringcmp(Start,Stop,"all") == 0)
+	 return true;
+
+      if (stringcmp(Start,Stop,"cydia") == 0)
 	 return true;
 
       iOffset = Tags.Offset();
@@ -638,8 +747,6 @@ bool debListParser::LoadReleaseInfo(pkgCache::PkgFileIterator FileI,
       FileI->Version = WriteUniqString(Start,Stop - Start);
    if (Section.Find("Origin",Start,Stop) == true)
       FileI->Origin = WriteUniqString(Start,Stop - Start);
-   if (Section.Find("Codename",Start,Stop) == true)
-      FileI->Codename = WriteUniqString(Start,Stop - Start);
    if (Section.Find("Label",Start,Stop) == true)
       FileI->Label = WriteUniqString(Start,Stop - Start);
    if (Section.Find("Architecture",Start,Stop) == true)

@@ -943,12 +943,17 @@ static int HexDigit(int c)
 /* The length of the buffer must be exactly 1/2 the length of the string. */
 bool Hex2Num(const string &Str,unsigned char *Num,unsigned int Length)
 {
+   return Hex2Num(srkString(Str), Num, Length);
+}
+
+bool Hex2Num(const srkString &Str,unsigned char *Num,unsigned int Length)
+{
    if (Str.length() != Length*2)
       return false;
    
    // Convert each digit. We store it in the same order as the string
    int J = 0;
-   for (string::const_iterator I = Str.begin(); I != Str.end();J++, I += 2)
+   for (srkString::const_iterator I = Str.begin(); I != Str.end();J++, I += 2)
    {
       if (isxdigit(*I) == 0 || isxdigit(I[1]) == 0)
 	 return false;

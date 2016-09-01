@@ -1,0 +1,5 @@
+#ruby ./telesphoreoPatches/applyAllPatches.rb
+mkdir build
+cd build
+../configure
+make

@@ -1,7 +1,7 @@
 # This file contains everything that autoconf guessed for your system.
 # if you want you can edit it, just don't re-run configure.
 
-PACKAGE = @PACKAGE@
+PACKAGE = apt
 
 # C++ compiler options
 SIMULATOR_FLAGS_X86_64 = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk -arch x86_64 -mios-simulator-version-min=6.0
@@ -9,66 +9,68 @@ SIMULATOR_FLAGS_i386 = -isysroot /Applications/Xcode.app/Contents/Developer/Plat
 DEVICE_FLAGS_32BIT = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -arch armv7 -mios-version-min=6.0
 DEVICE_FLAGS_64BIT = -isysroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk -arch arm64 -mios-version-min=6.0
 
-CC = @CC@
-CPPFLAGS+= @CPPFLAGS@ @DEFS@ -D_REENTRANT -Wall -stdlib=libstdc++ -fmodules -fstrict-aliasing $(DEVICE_FLAGS_64BIT)
-CXX = @CXX@
-CXXFLAGS+= @CXXFLAGS@
-NUM_PROCS = @NUM_PROCS@
+CC = gcc
+CPPFLAGS+=  -DHAVE_CONFIG_H -D_REENTRANT -Wall -stdlib=libstdc++ -fmodules -fstrict-aliasing $(SIMULATOR_FLAGS_i386)
+CXX = g++
+CXXFLAGS+= -g -O2 -stdlib=libstdc++ -fmodules -fstrict-aliasing $(SIMULATOR_FLAGS_i386) -I$(BASE)/External/curl/i386-apple-darwin/include
+NUM_PROCS = 16
 
 # Linker stuff
 LINKER_SIMULATOR_FLAGS_X86_64 = -arch x86_64 -ios_simulator_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
-LINKER_SIMULATOR_FLAGS_i386 = -arch i386 -ios_simulator_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
+LINKER_SIMULATOR_FLAGS_i386 = -Xlinker -arch -Xlinker i386 -Xlinker -ios_simulator_version_min -Xlinker 6.0 -Xlinker -syslibroot -Xlinker /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
+LINKER_SIMULATOR_FLAGS_i386_RAW = -arch i386 -ios_simulator_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk
 LINKER_DEVICE_FLAGS_32BIT = -arch armv7 -ios_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
 LINKER_DEVICE_FLAGS_64BIT = -arch arm64 -ios_version_min 6.0 -syslibroot /Applications/Xcode.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk
 PICFLAGS+= -fPIC -DPIC
-LFLAGS+= @LDFLAGS@
+LFLAGS+=-Xlinker -dylib -single_module -Xlinker -ObjC -Xlinker -lc++ -Xlinker -lc++abi -Xlinker -lstdc++ -Xlinker -lSystem -Xlinker -liconv $(LINKER_SIMULATOR_FLAGS_i386) -Xlinker -L$(BASE)/External/curl/i386-apple-darwin/lib -Xlinker -framework -Xlinker CoreFoundation -Xlinker -framework -Xlinker Security -Xlinker -lz
 LEFLAGS+=
-LDFLAGS:=-dylib -single_module -ObjC -lc++ -lc++abi -lstdc++ -lSystem -liconv $(LINKER_DEVICE_FLAGS_64BIT)
-SOCKETLIBS:= @SOCKETLIBS@
-AR:=@AR@
-RANLIB:=@RANLIB@
+LDFLAGS:=
+LINKER_FLAGS:=-dylib -single_module -ObjC -lc++ -lc++abi -lstdc++ -lSystem -liconv $(LINKER_SIMULATOR_FLAGS_i386_RAW)
+SOCKETLIBS:=
+AR:=ar
+RANLIB:=ranlib
 
 # Dep generation - this only works for gnu stuff
-GCC3DEP = @GCC3DEP@
+GCC3DEP = yes
 INLINEDEPFLAG = -MD
 
 # Debian doc stuff
-DEBIANDOC_HTML = @DEBIANDOC_HTML@
-DEBIANDOC_TEXT = @DEBIANDOC_TEXT@
+DEBIANDOC_HTML =
+DEBIANDOC_TEXT =
 
-DOXYGEN = @DOXYGEN@
+DOXYGEN =
 
 # xsltproc for the man pages
-XSLTPROC := @XSLTPROC@
+XSLTPROC := /usr/bin/xsltproc
 
 # po4a for the man pages
-PO4A := @PO4A@
+PO4A :=
 
 # Gettext settings
-GMSGFMT = @GMSGFMT@
-XGETTEXT = @XGETTEXT@
+GMSGFMT = :
+XGETTEXT = :
 MSGCOMM:=$(dir $(XGETTEXT))/msgcomm
 MSGMERGE:=$(dir $(XGETTEXT))/msgmerge
-BASH = @BASH@
+BASH = /bin/sh
 
 # Various library checks
-PTHREADLIB = @PTHREADLIB@
+PTHREADLIB =
 PYTHONLIB = @PYTHONLIB@
 PYTHONVER = @PYTHONVER@
 PYTHONPREFIX = @PYTHONPREFIX@
 PYTHONEXECPREFIX = @PYTHONEXECPREFIX@
 PYTHONINCLUDE = @PYTHONINCLUDE@
-BDBLIB = @BDBLIB@
-INTLLIBS = @INTLLIBS@
+BDBLIB =
+INTLLIBS =
 
 # Shim Headerfile control
-HAVE_C9X = @HAVE_C9X@
-HAVE_STATVFS = @HAVE_STATVFS@
-HAVE_TIMEGM = @HAVE_TIMEGM@
-NEED_SOCKLEN_T_DEFINE = @NEED_SOCKLEN_T_DEFINE@
+HAVE_C9X = yes
+HAVE_STATVFS = yes
+HAVE_TIMEGM =
+NEED_SOCKLEN_T_DEFINE =
 
 # Shared library things
-HOST_OS = @host_os@
+HOST_OS = darwin15.6.0
 ifneq ($(words $(filter gnu% linux-gnu% kfreebsd-gnu% %-gnu,$(HOST_OS))),0)
    SONAME_MAGIC=-Wl,-soname -Wl,
    LFLAGS_SO=

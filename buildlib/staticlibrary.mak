@@ -41,7 +41,7 @@ veryclean/$(LOCAL): clean/$(LOCAL)
 $($(LOCAL)-LIB): $($(LOCAL)-HEADERS) $($(LOCAL)-OBJS)
 	echo Building library $@
 	-rm $@ > /dev/null 2>&1
-	$(LD) $(filter %.o,$^) -dylib -single_module $(LDFLAGS) -ObjC -lc++ -lc++abi -lstdc++ -lSystem -liconv -o $@
+	$(LD) $(filter %.o,$^) -dylib -single_module $(LDFLAGS) $(LINKER_FLAGS) -ObjC -lc++ -lc++abi -lstdc++ -lSystem -liconv -o $@
 #	$(AR) cq $@ $(filter %.o,$^)
 ifneq ($(words $(RANLIB)),0)
 #	$(RANLIB) $@
